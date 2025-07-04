@@ -1,0 +1,99 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © LvNThL
+
+//@version=5
+indicator("Custom Kijun-Sen", "CKS", true)
+
+
+
+bool _showhlma = input.bool(true, "Show Custom Kijun-Sen MA?", tooltip = string("Associated with Color Fill Settings"), group = "Switches")
+bool _showhlmabands = input.bool(true, "Show Custom Kijun-Sen Bands?", tooltip = string("Associated with Dev. % Settings"), group = "Switches")
+bool _3 = input.bool(true, "Show Moving Average 1 & 2?", tooltip = string("Associated with Color Fill Settings"), group = "Switches")
+bool _glow = input.bool(true, "Color Fill?", group = "Switches")
+bool _darkmode = input.bool(false, "DarkMode?", group = "Switches")
+
+//MOVING AVERAGES
+
+_lookback1 = input.int(200, "Kijun-Sen Period", group = "Kijun-Sen Settings")
+
+string typeMA11 = string("EMA")
+string typeMA21 = string("SMA")
+int smoothingLength1 = int(5)
+
+float _deviationpercentile1 = input.float(1, minval = 0, step = 0.05, title =  "Dev. %: Band 1", group = "Dev. % Settings")
+float _deviationpercentile2 = input.float(2, minval = 0, step = 0.05, title =  "Dev. %: Band 2", group = "Dev. % Settings")
+float _deviationpercentile3 = input.float(3, minval = 0, step = 0.05, title =  "Dev. %: Band 3", group = "Dev. % Settings")
+float _deviationpercentile4 = input.float(4, minval = 0, step = 0.05, title =  "Dev. %: Band 4", group = "Dev. % Settings")
+float _deviationpercentile5 = input.float(5, minval = 0, step = 0.05, title =  "Dev. %: Band 5", group = "Dev. % Settings")
+
+ma11(source, length, type) =>
+    switch type
+        "EMA" => ta.ema(source, length)
+
+ma21(source, length, type) =>
+    switch type
+        "SMA" => ta.sma(source, length)
+
+_ma3 = ma11(close, int(21), typeMA11)
+_ma4 = ma11(close, int(30), typeMA11)
+
+_smoothedma3 = ma21(_ma3, smoothingLength1, typeMA21)
+_smoothedma4 = ma21(_ma4, smoothingLength1, typeMA21)
+
+//MA PLOTS
+c = plot(_3 ? _smoothedma3 : na, "Smoothed MA 1", color = _darkmode ? color.rgb(255,255,255,55) : color.rgb(0,0,0,55), linewidth = 1, style = plot.style_line)
+d = plot(_3 ? _smoothedma4 : na, "Smoothed MA 2", color = _darkmode ? color.rgb(255,255,255,45) : color.rgb(0,0,0,45), linewidth = 1, style = plot.style_line)
+
+//ARRAYS
+_highs = array.new<float>(0)
+_lows = array.new<float>(0)
+
+for i = 0 to _lookback1
+    array.push(_highs, high[i])
+    array.push(_lows, low[i])
+array.sort(_highs, order.descending)
+array.sort(_lows, order.ascending)
+
+_avghigh = array.avg(_highs)
+_avglow = array.avg(_lows)
+
+_avghigh2 = math.avg(array.get(_highs, 1), array.get(_highs, 2), array.get(_highs, 3), array.get(_highs, 4))
+_avglow2 = math.avg(array.get(_lows, 1), array.get(_lows, 2), array.get(_lows, 3), array.get(_lows, 4))
+
+_median1 = math.avg(_avghigh,_avglow)
+_median2 = ma21(math.avg(_avghigh,_avglow), _lookback1, typeMA21)
+
+_mediandevh1 = ma21((math.avg(_avghigh,_avglow) / ((_deviationpercentile1 / 100) + 1)), _lookback1, typeMA21)
+_mediandevh2 = ma21((math.avg(_avghigh,_avglow) / ((_deviationpercentile2 / 100) + 1)), _lookback1, typeMA21)
+_mediandevh3 = ma21((math.avg(_avghigh,_avglow) / ((_deviationpercentile3 / 100) + 1)), _lookback1, typeMA21)
+_mediandevh4 = ma21((math.avg(_avghigh,_avglow) / ((_deviationpercentile4 / 100) + 1)), _lookback1, typeMA21)
+_mediandevh5 = ma21((math.avg(_avghigh,_avglow) / ((_deviationpercentile5 / 100) + 1)), _lookback1, typeMA21)
+
+_mediandevl1 = ma21((math.avg(_avghigh,_avglow) * ((_deviationpercentile1 / 100) + 1)), _lookback1, typeMA21)
+_mediandevl2= ma21((math.avg(_avghigh,_avglow) * ((_deviationpercentile2 / 100) + 1)), _lookback1, typeMA21)
+_mediandevl3 = ma21((math.avg(_avghigh,_avglow) * ((_deviationpercentile3 / 100) + 1)), _lookback1, typeMA21)
+_mediandevl4 = ma21((math.avg(_avghigh,_avglow) * ((_deviationpercentile4 / 100) + 1)), _lookback1, typeMA21)
+_mediandevl5 = ma21((math.avg(_avghigh,_avglow) * ((_deviationpercentile5 / 100) + 1)), _lookback1, typeMA21)
+
+_highavg = ma11(_avghigh2, _lookback1, typeMA11)
+_lowavg = ma11(_avglow2, _lookback1, typeMA11)
+
+//DATA PLOTS
+h = plot(_showhlma ? _median2 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevh1 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevh2 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevh3 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevh4 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevh5 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+
+plot(_showhlmabands ? _mediandevl1 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevl2 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevl3 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevl4 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+plot(_showhlmabands ? _mediandevl5 : na, color = _darkmode ? #ffffff : #000000, linewidth = 1)
+
+z = plot(hlcc4, display = display.none)
+fill(h, z, _glow ? _median2 > hlcc4 ? color.rgb(255, 0, 0, 90) : color.rgb(0, 255, 0, 90) : na, "Color Fill")
+fill(d, z, _glow ? _smoothedma3 and _smoothedma4 > hlcc4 ? color.rgb(255, 0, 255, 75) : color.rgb(0, 255, 255, 75) : na, "Color Fill")
+fill(c, d, _glow ? _smoothedma4 > _smoothedma3 ? color.rgb(255, 0, 0, 50) : color.rgb(0, 255, 0, 50) : na, "Color Fill")
+
